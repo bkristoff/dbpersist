@@ -1,50 +1,17 @@
-
-Skip to content
-Pull requests
-Issues
-Marketplace
-Explore
-@bkristoff
-bkristoff /
-dbpersist
-Public
-
-Code
-Issues
-Pull requests
-Actions
-Projects
-Wiki
-Security
-Insights
-
-    Settings
-
-dbpersist/database/DbPersist.sql
-@bkristoff
-bkristoff Added SQL script
-Latest commit 96cbf63 yesterday
-History
-1 contributor
-694 lines (609 sloc) 21.8 KB
 -- ---------------------------------------------------------------------------
 -- SQL script for DbPersist.
 -- 
 -- Version: 1.0
--- Date:    03.01.2022
--- Author:  Bjørn Kristoffersen
---
--- Web:     https://dbsys.info/dbpersist/
--- GitHub:  https://github.com/bkristoff/dbpersist/
+-- Date:    25.04.2022
 -- ---------------------------------------------------------------------------
 
 
 
 -- ***************************************************************************
 -- CREATE DATABASE
---
--- If database name is changed, remember to edit config file.
 -- ***************************************************************************
+DROP DATABASE IF EXISTS dbpersist;
+
 CREATE DATABASE IF NOT EXISTS dbpersist
   DEFAULT CHARACTER SET = 'utf8' COLLATE = 'utf8_general_ci';
 
@@ -53,23 +20,15 @@ USE dbpersist;
 
 
 -- ***************************************************************************
--- DELETING TABLES
+-- DELETE TABLES
 --
 -- Delete tables if they exists.
--- Useful when running the script repeatedly (after changes).
 -- ***************************************************************************
 
-DROP TABLE IF EXISTS CheckLogTrans;
-DROP TABLE IF EXISTS AnswerTrans;
-DROP TABLE IF EXISTS SynonymPairTrans;
 DROP TABLE IF EXISTS ExerciseTrans;
-DROP TABLE IF EXISTS AppUserTrans;
 DROP TABLE IF EXISTS AchievementTrans;
 DROP TABLE IF EXISTS MessageTrans;
 DROP TABLE IF EXISTS UserLevelTrans;
-DROP TABLE IF EXISTS WordTypeTrans;
-DROP TABLE IF EXISTS NotationTrans;
-DROP TABLE IF EXISTS UserTypeTrans;
 
 DROP TABLE IF EXISTS UserGotAchievement;
 DROP TABLE IF EXISTS CheckLog;
@@ -91,7 +50,7 @@ DROP TABLE IF EXISTS Lang;
 
 
 -- ***************************************************************************
--- CREATING TABLES
+-- CREATE TABLES
 --
 -- ***************************************************************************
 
@@ -115,8 +74,11 @@ CREATE TABLE Lang
 -- ---------------------------------------------------------------------------
 CREATE TABLE UserType
 (
-  Name VARCHAR(50),
-  CONSTRAINT UserTypePK PRIMARY KEY (Name)
+  LangCode CHAR(2) NOT NULL,
+  Name     VARCHAR(50),
+  CONSTRAINT UserTypePK PRIMARY KEY (LangCode, Name),
+  CONSTRAINT UserTypeLangFK FOREIGN KEY (LangCode) 
+    REFERENCES Lang (Code)
 );
 
 
@@ -126,8 +88,11 @@ CREATE TABLE UserType
 -- ---------------------------------------------------------------------------
 CREATE TABLE Notation
 (
-  Name VARCHAR(50),
-  CONSTRAINT NotationPK PRIMARY KEY (Name)
+  LangCode CHAR(2) NOT NULL,
+  Name     VARCHAR(50),
+  CONSTRAINT NotationPK PRIMARY KEY (LangCode, Name),
+  CONSTRAINT NotationLangFK FOREIGN KEY (LangCode) 
+    REFERENCES Lang (Code)
 );
 
 
@@ -137,8 +102,11 @@ CREATE TABLE Notation
 -- ---------------------------------------------------------------------------
 CREATE TABLE WordType
 (
-  Name VARCHAR(50),
-  CONSTRAINT WordTypePK PRIMARY KEY (Name)
+  LangCode CHAR(2) NOT NULL,
+  Name     VARCHAR(50),
+  CONSTRAINT WordTypePK PRIMARY KEY (LangCode, Name),
+  CONSTRAINT WordTypeLangFK FOREIGN KEY (LangCode) 
+    REFERENCES Lang (Code)
 );
 
 
@@ -158,13 +126,11 @@ CREATE TABLE DiffLevel
 -- Table UserLevel
 --
 -- The user levels in the app; will probably go from 1 to 5.
--- Descriptions can be Newbie, Beginner, Experienced, Expert, Guru.
 -- UserLevel=n can solve exercises at DiffLevel=n*2 without too much help?
 -- ---------------------------------------------------------------------------
 CREATE TABLE UserLevel
 (
   LevelNum    SMALLINT,
-  Description VARCHAR(255),
   CONSTRAINT UserLevelPK PRIMARY KEY (LevelNum)
 );
 
@@ -198,8 +164,8 @@ CREATE TABLE Message
   MsgKey        VARCHAR(30),
   Definition    VARCHAR(255),
   Stats         VARCHAR(255),
-  ShortFeedback LONGTEXT,
-  LongFeedback  LONGTEXT,
+  ShortFeedback TEXT,
+  LongFeedback  TEXT,
   CONSTRAINT MessagePK PRIMARY KEY (MsgKey)
 );
 
@@ -240,18 +206,20 @@ CREATE TABLE AppUser
   Id        INTEGER      AUTO_INCREMENT,
   UserName  VARCHAR(255) NOT NULL,
   Email     VARCHAR(255) NOT NULL,
+  CreatedAt TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   Password  VARCHAR(255) NOT NULL,
-  UserType  VARCHAR(50)  NOT NULL,
+  UserType  VARCHAR(50),
+  LangCode  CHAR(2),
   Verified  BOOLEAN      NOT NULL,
   Notation  VARCHAR(50),
   LevelNum  SMALLINT     NOT NULL,
   AvatarId  SMALLINT,
   CONSTRAINT AppUserPK PRIMARY KEY (Id),
-  CONSTRAINT AppUserUserTypeFK FOREIGN KEY (UserType) 
-    REFERENCES UserType (Name),
-  CONSTRAINT AppUserNotationFK FOREIGN KEY (Notation) 
-    REFERENCES Notation (Name) ON DELETE SET NULL,
-CONSTRAINT AppUserUserLevelFK FOREIGN KEY (LevelNum) 
+  CONSTRAINT AppUserUserTypeFK FOREIGN KEY (LangCode, UserType) 
+    REFERENCES UserType (LangCode, Name) ON DELETE SET NULL,
+  CONSTRAINT AppUserNotationFK FOREIGN KEY (LangCode, Notation) 
+    REFERENCES Notation (LangCode, Name) ON DELETE SET NULL,
+  CONSTRAINT AppUserUserLevelFK FOREIGN KEY (LevelNum) 
     REFERENCES UserLevel (LevelNum),
   CONSTRAINT AppUserAvatarFK FOREIGN KEY (AvatarId) 
     REFERENCES Avatar (Id) ON DELETE SET NULL
@@ -261,19 +229,9 @@ CONSTRAINT AppUserUserLevelFK FOREIGN KEY (LevelNum)
 -- ---------------------------------------------------------------------------
 -- Table Exercise
 --
--- Description is he scenario text (HTML).
--- Solution contains the solution data model (JSON).
--- FalseNames contains lists of inadequate entity, attribute and 
---   relationship names (JSON).
--- Hint contains an exercise specific help text (HTML).
 -- ---------------------------------------------------------------------------
 CREATE TABLE Exercise (
   Id           INTEGER      AUTO_INCREMENT,
-  Title        VARCHAR(255) NOT NULL,
-  Description  TEXT,
-  Solution     JSON,
-  FalseNames   JSON,
-  Hint         TEXT,
   IsPublic     BOOLEAN      NOT NULL,
   AuthorId     INTEGER,
   DiffLevelNum SMALLINT     NOT NULL,
@@ -301,13 +259,15 @@ CREATE TABLE SynonymPair
   Word2      VARCHAR(255) NOT NULL,
   ExId       INTEGER,
   NameType   VARCHAR(50),
+  LangCode   CHAR(2),
   CONSTRAINT SynonymPairPK PRIMARY KEY (Id),
   CONSTRAINT SynonymPairExerciseFK FOREIGN KEY (ExId) 
     REFERENCES Exercise (Id) ON DELETE SET NULL,
-  CONSTRAINT SynonymPairWordTypeFK FOREIGN KEY (NameType) 
-    REFERENCES WordType (Name) ON DELETE SET NULL
+  CONSTRAINT SynonymPairWordTypeFK FOREIGN KEY (LangCode, NameType) 
+    REFERENCES WordType (LangCode, Name) ON DELETE SET NULL,
+  CONSTRAINT SynonymPairLangFK FOREIGN KEY (LangCode) 
+    REFERENCES Lang (Code)
 );
-
 
 
 -- ---------------------------------------------------------------------------
@@ -316,9 +276,9 @@ CREATE TABLE SynonymPair
 -- ---------------------------------------------------------------------------
 CREATE TABLE Login
 (
-  Id         INTEGER  AUTO_INCREMENT,
-  SignedInAt DATETIME NOT NULL,
-  UserId     INTEGER  NOT NULL,
+  Id         INTEGER   AUTO_INCREMENT,
+  SignedInAt TIMESTAMP NOT NULL,
+  UserId     INTEGER   NOT NULL,
   CONSTRAINT LoginPK PRIMARY KEY (Id),
   CONSTRAINT LoginAppUser FOREIGN KEY (UserId) 
     REFERENCES AppUser (Id) ON DELETE CASCADE
@@ -333,21 +293,24 @@ CREATE TABLE Answer
 (
   Id             INTEGER     AUTO_INCREMENT,
   Answer         JSON        NOT NULL,
-  Notation       VARCHAR(50),
+  Notation       VARCHAR(50) NOT NULL,
   Submitted      BOOLEAN     NOT NULL,
-  StoredAt       DATETIME    NOT NULL,
+  StoredAt       TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
   ModelPoints    INTEGER     NOT NULL,
   NumberOfChecks SMALLINT    NOT NULL,
   HintPenalty    INTEGER     NOT NULL,
   UserId         INTEGER     NOT NULL,
   ExId           INTEGER     NOT NULL,
+  LangCode       CHAR(2)     NOT NULL,
   CONSTRAINT AnswerPK PRIMARY KEY (Id),
-  CONSTRAINT AnswerNotationFK FOREIGN KEY (Notation) 
-    REFERENCES Notation (Name),
+  CONSTRAINT AnswerNotationFK FOREIGN KEY (LangCode, Notation) 
+    REFERENCES Notation (LangCode, Name),
   CONSTRAINT AnswerUserFK FOREIGN KEY (UserId) 
     REFERENCES AppUser (Id) ON DELETE CASCADE,
   CONSTRAINT AnswerExerciseFK FOREIGN KEY (ExId) 
-    REFERENCES Exercise (Id) ON DELETE CASCADE
+    REFERENCES Exercise (Id) ON DELETE CASCADE,
+  CONSTRAINT AnswerLangFK FOREIGN KEY (LangCode) 
+    REFERENCES Lang (Code)
 );
 
 
@@ -359,16 +322,17 @@ CREATE TABLE CheckLog
 (
   Id             INTEGER     AUTO_INCREMENT,
   Answer         JSON        NOT NULL,
-  Notation       VARCHAR(50),
+  Notation       VARCHAR(50) NOT NULL,
   CheckedAt      DATETIME    NOT NULL,
   ModelPoints    INTEGER     NOT NULL,
   NumberOfChecks SMALLINT    NOT NULL,
   HintPenalty    INTEGER     NOT NULL,
   UserId         INTEGER     NOT NULL,
   ExId           INTEGER     NOT NULL,
+  LangCode       CHAR(2)     NOT NULL,
   CONSTRAINT AnswerPK PRIMARY KEY (Id),
-  CONSTRAINT CheckLogNotationFK FOREIGN KEY (Notation) 
-    REFERENCES Notation (Name),
+  CONSTRAINT CheckLogNotationFK FOREIGN KEY (LangCode, Notation) 
+    REFERENCES Notation (LangCode, Name),
   CONSTRAINT CheckLogUserFK FOREIGN KEY (UserId) 
     REFERENCES AppUser (Id) ON DELETE CASCADE,
   CONSTRAINT CheckLogExerciseFK FOREIGN KEY (ExId) 
@@ -382,10 +346,10 @@ CREATE TABLE CheckLog
 -- ---------------------------------------------------------------------------
 CREATE TABLE UserGotAchievement
 (
-  Id         INTEGER  AUTO_INCREMENT,
-  UserId     INTEGER  NOT NULL,
-  AchievId   SMALLINT NOT NULL,
-  ReceivedAt DATETIME NOT NULL,
+  Id         INTEGER   AUTO_INCREMENT,
+  UserId     INTEGER   NOT NULL,
+  AchievId   SMALLINT  NOT NULL,
+  ReceivedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT UserGotAchievementPK PRIMARY KEY (Id),
   CONSTRAINT UserGotAchievementAppUser FOREIGN KEY (UserId) 
     REFERENCES AppUser (Id) ON DELETE CASCADE,
@@ -405,58 +369,11 @@ CREATE TABLE UserGotAchievement
 -- column from T.
 -- ***************************************************************************
 
--- ---------------------------------------------------------------------------
--- Table UserTypeTrans
--- ---------------------------------------------------------------------------
-CREATE TABLE UserTypeTrans
-(
-  LangCode  CHAR(2),
-  Name      VARCHAR(50),
-  TransName VARCHAR(50),
-  CONSTRAINT UserTypeTransPK PRIMARY KEY (LangCode, Name),
-  CONSTRAINT UserTypeTransLangFK FOREIGN KEY (LangCode) 
-    REFERENCES Lang (Code),
-  CONSTRAINT UserTypeTransUserTypeFK FOREIGN KEY (Name) 
-    REFERENCES UserType (Name)
-);
-
-
--- ---------------------------------------------------------------------------
--- Table NotationTrans
---
--- ---------------------------------------------------------------------------
-CREATE TABLE NotationTrans
-(
-  LangCode  CHAR(2),
-  Name      VARCHAR(50),
-  TransName VARCHAR(50),
-  CONSTRAINT NotationTransPK PRIMARY KEY (LangCode, Name),
-  CONSTRAINT NotationTransLangFK FOREIGN KEY (LangCode) 
-    REFERENCES Lang (Code),
-  CONSTRAINT NotationTransNotationFK FOREIGN KEY (Name) 
-    REFERENCES Notation (Name)
-);
-
-
--- ---------------------------------------------------------------------------
--- Table WordTypeTrans
---
--- ---------------------------------------------------------------------------
-CREATE TABLE WordTypeTrans
-(
-  LangCode  CHAR(2),
-  Name      VARCHAR(50),
-  TransName VARCHAR(50),
-  CONSTRAINT WordTypeTransPK PRIMARY KEY (LangCode, Name),
-  CONSTRAINT WordTypeTransLangFK FOREIGN KEY (LangCode) 
-    REFERENCES Lang (Code),
-  CONSTRAINT WordTypeTransWordTypeFK FOREIGN KEY (Name) 
-    REFERENCES WordType (Name)
-);
-
 
 -- ---------------------------------------------------------------------------
 -- Table UserLevelTrans
+-- 
+-- Descriptions can be Newbie, Beginner, Experienced, Expert, Guru.
 -- ---------------------------------------------------------------------------
 CREATE TABLE UserLevelTrans
 (
@@ -509,6 +426,12 @@ CREATE TABLE AchievementTrans
 
 -- ---------------------------------------------------------------------------
 -- Table ExerciseTrans
+--
+-- Description is the scenario text (HTML).
+-- Solution contains the solution data model (JSON).
+-- FalseNames contains lists of inadequate entity, attribute and 
+--   relationship names (JSON).
+-- Hint contains an exercise specific help text (HTML).
 -- ---------------------------------------------------------------------------
 CREATE TABLE ExerciseTrans
 (
@@ -527,34 +450,149 @@ CREATE TABLE ExerciseTrans
 );
 
 
--- ---------------------------------------------------------------------------
--- Table SynonymPairTrans
--- ---------------------------------------------------------------------------
-CREATE TABLE SynonymPairTrans
-(
-  LangCode CHAR(2),
-  Id       INTEGER,
-  Word1    VARCHAR(255) NOT NULL,
-  Word2    VARCHAR(255) NOT NULL,
-  CONSTRAINT SynonymPairTransPK PRIMARY KEY (LangCode, Id),
-  CONSTRAINT SynonymPairTransLangFK FOREIGN KEY (LangCode) 
-    REFERENCES Lang (Code),
-  CONSTRAINT SynonymPairTransSynonymPairFK FOREIGN KEY (Id) 
-    REFERENCES SynonymPair (Id)
-);
 
+-- ***************************************************************************
+-- DATA
+--
+-- The script inserts example data into all tables,
+-- except for tables storing data about users and user activity,
+-- and tables that can be automatically copied from the LearnER database.
+-- ***************************************************************************
 
 -- ---------------------------------------------------------------------------
--- Table AnswerTrans
+-- Table Lang
 -- ---------------------------------------------------------------------------
-CREATE TABLE AnswerTrans
-(
-  LangCode CHAR(2),
-  Id       INTEGER,
-  Answer   JSON     NOT NULL,
-  CONSTRAINT AnswerTransPK PRIMARY KEY (LangCode, Id),
-  CONSTRAINT AnswerTransLangFK FOREIGN KEY (LangCode) 
-    REFERENCES Lang (Code),
-  CONSTRAINT AnswerTransAnswerFK FOREIGN KEY (Id) 
-    REFERENCES Answer (Id)
-);
+INSERT INTO
+  Lang(Code, Name)
+VALUES
+  ('EN', 'English'),
+  ('NO', 'Norsk');
+  
+-- ---------------------------------------------------------------------------
+-- Table UserType
+-- ---------------------------------------------------------------------------
+INSERT INTO
+  UserType(LangCode, Name)
+VALUES
+  ('EN', 'Student'),
+  ('EN', 'Teacher'),
+  ('EN', 'Admin'),
+  ('NO', 'Student'),
+  ('NO', 'Lærer'),
+  ('NO', 'Admin');
+  
+-- ---------------------------------------------------------------------------
+-- Table Notation
+-- ---------------------------------------------------------------------------
+INSERT INTO
+  Notation(LangCode, Name)
+VALUES
+  ('EN', 'Crows Foot'),
+  ('EN', 'UML'),
+  ('NO', 'Kråkefot'),
+  ('NO', 'UML');
+  
+-- ---------------------------------------------------------------------------
+-- Table WordType
+-- ---------------------------------------------------------------------------
+INSERT INTO
+  WordType(LangCode, Name)
+VALUES
+  ('EN', 'Entity'),
+  ('EN', 'Attribute'),
+  ('EN', 'Relationship'),
+  ('NO', 'Entitet'),
+  ('NO', 'Attributt'),
+  ('NO', 'Forhold');
+
+ -- ---------------------------------------------------------------------------
+-- Table DiffLevel
+-- ---------------------------------------------------------------------------
+INSERT INTO 
+  DiffLevel(LevelNum)
+VALUES 
+  (1),
+  (2),
+  (3),
+  (4),
+  (5),
+  (6),
+  (7),
+  (8),
+  (9),
+  (10); 
+
+-- ---------------------------------------------------------------------------
+-- Table UserLevel
+-- ---------------------------------------------------------------------------
+INSERT INTO 
+  UserLevel(LevelNum)
+VALUES 
+  (1),
+  (2),
+  (3),
+  (4),
+  (5);
+
+-- ---------------------------------------------------------------------------
+-- Table Avatar
+-- ---------------------------------------------------------------------------
+INSERT INTO 
+  Avatar(Id, FileName, LevelNum)
+VALUES 
+  (1, 'avatar1.png', 1),
+  (2, 'avatar2.png', 2),
+  (3, 'avatar3.png', 2),
+  (4, 'avatar4.png', 3),
+  (5, 'avatar5.png', 4),
+  (6, 'avatar6.png', 5),
+  (7, 'admin.png',   5);
+
+-- ---------------------------------------------------------------------------
+-- Table Achievement
+-- ---------------------------------------------------------------------------
+INSERT INTO 
+  Achievement(ImgFileName, LevelCond, VolumeCond, SuccessCond, HelpCond)
+VALUES 
+  ('trophy1.png', 2, 2, 70, 5),
+  ('trophy2.png', 4, 4, 70, 5);
+
+
+
+-- ***************************************************************************
+-- LANGUAGE SPECIFIC DATA
+--
+-- ***************************************************************************
+  
+-- ---------------------------------------------------------------------------
+-- Table UserLevelTrans
+-- ---------------------------------------------------------------------------  
+INSERT INTO 
+  UserLevelTrans(LangCode, LevelNum, Name)
+VALUES 
+  ('EN', 1, 'Newbie'),
+  ('EN', 2, 'Beginner'),
+  ('EN', 3, 'Experienced'),
+  ('EN', 4, 'Expert'),
+  ('EN', 5, 'Guru'),
+  ('NO', 1, 'Fersking'),
+  ('NO', 2, 'Nybegynner'),
+  ('NO', 3, 'Erfaren'),
+  ('NO', 4, 'Ekspert'),
+  ('NO', 5, 'Guru');
+
+-- ---------------------------------------------------------------------------
+-- Table AchievementTrans
+-- ---------------------------------------------------------------------------
+INSERT INTO 
+  AchievementTrans(LangCode, Id, Title, Description)
+VALUES
+  ('EN', 1, 'First achievement', 'A good start!'),
+  ('EN', 2, 'Basic',   'Mastering the basics - keep going!'),
+  ('NO', 1, 'Første erobring', 'En god start!'),
+  ('NO', 2, 'Grunnleggende',   'Du mestrer det grunnleggende - det er bare å fortsette!');
+
+  
+-- ***************************************************************************
+-- END OF SCRIPT
+-- ***************************************************************************
