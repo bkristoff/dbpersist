@@ -1,21 +1,24 @@
 -- ---------------------------------------------------------------------------
--- SQL script for DbPersist.
+-- SQL script for the core tables in DbPersist.
 -- 
--- Version: 1.0
--- Date:    25.04.2022
+-- Version: 1
+-- Date:    07.07.2022
+--
 -- ---------------------------------------------------------------------------
 
 
 
 -- ***************************************************************************
 -- CREATE DATABASE
+-- 
 -- ***************************************************************************
-DROP DATABASE IF EXISTS dbpersist;
 
-CREATE DATABASE IF NOT EXISTS dbpersist
-  DEFAULT CHARACTER SET = 'utf8' COLLATE = 'utf8_general_ci';
-
-USE dbpersist;
+-- DROP DATABASE IF EXISTS dbpersist1;
+-- 
+-- CREATE DATABASE IF NOT EXISTS dbpersist1
+--   DEFAULT CHARACTER SET = 'utf8mb4';
+-- 
+-- USE dbpersist1;
 
 
 
@@ -74,11 +77,8 @@ CREATE TABLE Lang
 -- ---------------------------------------------------------------------------
 CREATE TABLE UserType
 (
-  LangCode CHAR(2) NOT NULL,
   Name     VARCHAR(50),
-  CONSTRAINT UserTypePK PRIMARY KEY (LangCode, Name),
-  CONSTRAINT UserTypeLangFK FOREIGN KEY (LangCode) 
-    REFERENCES Lang (Code)
+  CONSTRAINT UserTypePK PRIMARY KEY (Name)
 );
 
 
@@ -88,11 +88,8 @@ CREATE TABLE UserType
 -- ---------------------------------------------------------------------------
 CREATE TABLE Notation
 (
-  LangCode CHAR(2) NOT NULL,
   Name     VARCHAR(50),
-  CONSTRAINT NotationPK PRIMARY KEY (LangCode, Name),
-  CONSTRAINT NotationLangFK FOREIGN KEY (LangCode) 
-    REFERENCES Lang (Code)
+  CONSTRAINT NotationPK PRIMARY KEY (Name)
 );
 
 
@@ -102,11 +99,8 @@ CREATE TABLE Notation
 -- ---------------------------------------------------------------------------
 CREATE TABLE WordType
 (
-  LangCode CHAR(2) NOT NULL,
   Name     VARCHAR(50),
-  CONSTRAINT WordTypePK PRIMARY KEY (LangCode, Name),
-  CONSTRAINT WordTypeLangFK FOREIGN KEY (LangCode) 
-    REFERENCES Lang (Code)
+  CONSTRAINT WordTypePK PRIMARY KEY (Name)
 );
 
 
@@ -157,15 +151,12 @@ CREATE TABLE Avatar
 -- ---------------------------------------------------------------------------
 -- Table Message
 --
--- Contains formative feedback message templates. 
+-- Contains formative feedback message keys.
+-- Feedback (template) texts are stored in MessageTrans.
 -- ---------------------------------------------------------------------------
 CREATE TABLE Message
 (
   MsgKey        VARCHAR(30),
-  Definition    VARCHAR(255),
-  Stats         VARCHAR(255),
-  ShortFeedback TEXT,
-  LongFeedback  TEXT,
   CONSTRAINT MessagePK PRIMARY KEY (MsgKey)
 );
 
@@ -186,9 +177,7 @@ CREATE TABLE Message
 CREATE TABLE Achievement
 (
   Id          SMALLINT     AUTO_INCREMENT,
-  Title       VARCHAR(255) NOT NULL,
   ImgFileName VARCHAR(255) NOT NULL,
-  Description VARCHAR(255) NOT NULL,
   LevelCond   SMALLINT     NOT NULL,
   VolumeCond  SMALLINT     NOT NULL,
   SuccessCond SMALLINT     NOT NULL,
@@ -215,10 +204,10 @@ CREATE TABLE AppUser
   LevelNum  SMALLINT     NOT NULL,
   AvatarId  SMALLINT,
   CONSTRAINT AppUserPK PRIMARY KEY (Id),
-  CONSTRAINT AppUserUserTypeFK FOREIGN KEY (LangCode, UserType) 
-    REFERENCES UserType (LangCode, Name) ON DELETE SET NULL,
-  CONSTRAINT AppUserNotationFK FOREIGN KEY (LangCode, Notation) 
-    REFERENCES Notation (LangCode, Name) ON DELETE SET NULL,
+  CONSTRAINT AppUserUserTypeFK FOREIGN KEY (UserType) 
+    REFERENCES UserType (Name) ON DELETE SET NULL,
+  CONSTRAINT AppUserNotationFK FOREIGN KEY (Notation) 
+    REFERENCES Notation (Name) ON DELETE SET NULL,
   CONSTRAINT AppUserUserLevelFK FOREIGN KEY (LevelNum) 
     REFERENCES UserLevel (LevelNum),
   CONSTRAINT AppUserAvatarFK FOREIGN KEY (AvatarId) 
@@ -263,8 +252,8 @@ CREATE TABLE SynonymPair
   CONSTRAINT SynonymPairPK PRIMARY KEY (Id),
   CONSTRAINT SynonymPairExerciseFK FOREIGN KEY (ExId) 
     REFERENCES Exercise (Id) ON DELETE SET NULL,
-  CONSTRAINT SynonymPairWordTypeFK FOREIGN KEY (LangCode, NameType) 
-    REFERENCES WordType (LangCode, Name) ON DELETE SET NULL,
+  CONSTRAINT SynonymPairWordTypeFK FOREIGN KEY (NameType) 
+    REFERENCES WordType (Name) ON DELETE SET NULL,
   CONSTRAINT SynonymPairLangFK FOREIGN KEY (LangCode) 
     REFERENCES Lang (Code)
 );
@@ -303,8 +292,8 @@ CREATE TABLE Answer
   ExId           INTEGER     NOT NULL,
   LangCode       CHAR(2)     NOT NULL,
   CONSTRAINT AnswerPK PRIMARY KEY (Id),
-  CONSTRAINT AnswerNotationFK FOREIGN KEY (LangCode, Notation) 
-    REFERENCES Notation (LangCode, Name),
+  CONSTRAINT AnswerNotationFK FOREIGN KEY (Notation) 
+    REFERENCES Notation (Name),
   CONSTRAINT AnswerUserFK FOREIGN KEY (UserId) 
     REFERENCES AppUser (Id) ON DELETE CASCADE,
   CONSTRAINT AnswerExerciseFK FOREIGN KEY (ExId) 
@@ -327,16 +316,10 @@ CREATE TABLE CheckLog
   ModelPoints    INTEGER     NOT NULL,
   NumberOfChecks SMALLINT    NOT NULL,
   HintPenalty    INTEGER     NOT NULL,
-  UserId         INTEGER     NOT NULL,
-  ExId           INTEGER     NOT NULL,
-  LangCode       CHAR(2)     NOT NULL,
+  AnswerId       INTEGER     NOT NULL,
   CONSTRAINT AnswerPK PRIMARY KEY (Id),
-  CONSTRAINT CheckLogNotationFK FOREIGN KEY (LangCode, Notation) 
-    REFERENCES Notation (LangCode, Name),
-  CONSTRAINT CheckLogUserFK FOREIGN KEY (UserId) 
-    REFERENCES AppUser (Id) ON DELETE CASCADE,
-  CONSTRAINT CheckLogExerciseFK FOREIGN KEY (ExId) 
-    REFERENCES Exercise (Id) ON DELETE CASCADE
+  CONSTRAINT CheckLogAnswerFK FOREIGN KEY (AnswerId) 
+    REFERENCES Answer (Id) ON DELETE CASCADE
 );
 
 
@@ -362,7 +345,7 @@ CREATE TABLE UserGotAchievement
 -- ***************************************************************************
 -- TRANSLATION TABLES
 --
--- The database has an extra translation table for every table that contains
+-- The database has an extra translation table for some tables that contains
 -- multilingual (textual) data. Such a table T has a translation table TTrans.
 -- If T has primary key K, TTrans has primary key LangCode+K, where LangCode
 -- is a foreign key referencing Lang. TTrans contains every multilingual
@@ -395,8 +378,8 @@ CREATE TABLE MessageTrans
 (
   LangCode      CHAR(2),
   MsgKey        VARCHAR(30),
-  Definition    VARCHAR(255),
-  Stats         VARCHAR(255),
+  Definition    LONGTEXT,
+  Stats         LONGTEXT,
   ShortFeedback LONGTEXT,
   LongFeedback  LONGTEXT,
   CONSTRAINT MessageTransPK PRIMARY KEY (LangCode, MsgKey),
@@ -448,149 +431,6 @@ CREATE TABLE ExerciseTrans
   CONSTRAINT ExerciseTransExerciseFK FOREIGN KEY (Id) 
     REFERENCES Exercise (Id)
 );
-
-
-
--- ***************************************************************************
--- DATA
---
--- The script inserts example data into all tables,
--- except for tables storing data about users and user activity,
--- and tables that can be automatically copied from the LearnER database.
--- ***************************************************************************
-
--- ---------------------------------------------------------------------------
--- Table Lang
--- ---------------------------------------------------------------------------
-INSERT INTO
-  Lang(Code, Name)
-VALUES
-  ('EN', 'English'),
-  ('NO', 'Norsk');
-  
--- ---------------------------------------------------------------------------
--- Table UserType
--- ---------------------------------------------------------------------------
-INSERT INTO
-  UserType(LangCode, Name)
-VALUES
-  ('EN', 'Student'),
-  ('EN', 'Teacher'),
-  ('EN', 'Admin'),
-  ('NO', 'Student'),
-  ('NO', 'Lærer'),
-  ('NO', 'Admin');
-  
--- ---------------------------------------------------------------------------
--- Table Notation
--- ---------------------------------------------------------------------------
-INSERT INTO
-  Notation(LangCode, Name)
-VALUES
-  ('EN', 'Crows Foot'),
-  ('EN', 'UML'),
-  ('NO', 'Kråkefot'),
-  ('NO', 'UML');
-  
--- ---------------------------------------------------------------------------
--- Table WordType
--- ---------------------------------------------------------------------------
-INSERT INTO
-  WordType(LangCode, Name)
-VALUES
-  ('EN', 'Entity'),
-  ('EN', 'Attribute'),
-  ('EN', 'Relationship'),
-  ('NO', 'Entitet'),
-  ('NO', 'Attributt'),
-  ('NO', 'Forhold');
-
- -- ---------------------------------------------------------------------------
--- Table DiffLevel
--- ---------------------------------------------------------------------------
-INSERT INTO 
-  DiffLevel(LevelNum)
-VALUES 
-  (1),
-  (2),
-  (3),
-  (4),
-  (5),
-  (6),
-  (7),
-  (8),
-  (9),
-  (10); 
-
--- ---------------------------------------------------------------------------
--- Table UserLevel
--- ---------------------------------------------------------------------------
-INSERT INTO 
-  UserLevel(LevelNum)
-VALUES 
-  (1),
-  (2),
-  (3),
-  (4),
-  (5);
-
--- ---------------------------------------------------------------------------
--- Table Avatar
--- ---------------------------------------------------------------------------
-INSERT INTO 
-  Avatar(Id, FileName, LevelNum)
-VALUES 
-  (1, 'avatar1.png', 1),
-  (2, 'avatar2.png', 2),
-  (3, 'avatar3.png', 2),
-  (4, 'avatar4.png', 3),
-  (5, 'avatar5.png', 4),
-  (6, 'avatar6.png', 5),
-  (7, 'admin.png',   5);
-
--- ---------------------------------------------------------------------------
--- Table Achievement
--- ---------------------------------------------------------------------------
-INSERT INTO 
-  Achievement(ImgFileName, LevelCond, VolumeCond, SuccessCond, HelpCond)
-VALUES 
-  ('trophy1.png', 2, 2, 70, 5),
-  ('trophy2.png', 4, 4, 70, 5);
-
-
-
--- ***************************************************************************
--- LANGUAGE SPECIFIC DATA
---
--- ***************************************************************************
-  
--- ---------------------------------------------------------------------------
--- Table UserLevelTrans
--- ---------------------------------------------------------------------------  
-INSERT INTO 
-  UserLevelTrans(LangCode, LevelNum, Name)
-VALUES 
-  ('EN', 1, 'Newbie'),
-  ('EN', 2, 'Beginner'),
-  ('EN', 3, 'Experienced'),
-  ('EN', 4, 'Expert'),
-  ('EN', 5, 'Guru'),
-  ('NO', 1, 'Fersking'),
-  ('NO', 2, 'Nybegynner'),
-  ('NO', 3, 'Erfaren'),
-  ('NO', 4, 'Ekspert'),
-  ('NO', 5, 'Guru');
-
--- ---------------------------------------------------------------------------
--- Table AchievementTrans
--- ---------------------------------------------------------------------------
-INSERT INTO 
-  AchievementTrans(LangCode, Id, Title, Description)
-VALUES
-  ('EN', 1, 'First achievement', 'A good start!'),
-  ('EN', 2, 'Basic',   'Mastering the basics - keep going!'),
-  ('NO', 1, 'Første erobring', 'En god start!'),
-  ('NO', 2, 'Grunnleggende',   'Du mestrer det grunnleggende - det er bare å fortsette!');
 
   
 -- ***************************************************************************
