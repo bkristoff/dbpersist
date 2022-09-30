@@ -2,7 +2,7 @@
 -- SQL script for the SQL module in DbPersist.
 -- 
 -- Version: 1
--- Date:    08.08.2022
+-- Date:    30.09.2022
 --
 -- GitHub:  https://github.com/bkristoff/dbpersist/
 -- ---------------------------------------------------------------------------
@@ -13,10 +13,8 @@
 -- DROPPING TABLES
 --
 -- ***************************************************************************
-DROP TABLE IF EXISTS SqlAnswerTrans;
 DROP TABLE IF EXISTS SqlQuestionTrans;
 
-DROP TABLE IF EXISTS SqlQuestionInQuiz;
 DROP TABLE IF EXISTS SqlAnswer;
 DROP TABLE IF EXISTS SqlQuestion;
 
@@ -36,11 +34,11 @@ CREATE TABLE SqlQuestion
 (
   Id           INTEGER AUTO_INCREMENT,
   IsPublic     BOOLEAN NOT NULL,
-  AuthorId     INTEGER,
+  ExerciseId   INTEGER,
   DiffLevelNum SMALLINT NOT NULL,
   CONSTRAINT SqlQuestionPK PRIMARY KEY (Id),
-  CONSTRAINT SqlQuestionAppUserFK FOREIGN KEY (AuthorId) 
-    REFERENCES AppUser (Id) ON DELETE SET NULL,
+  CONSTRAINT SqlQuestionExerciseFK FOREIGN KEY (ExerciseId) 
+    REFERENCES Exercise (Id) ON DELETE SET NULL,
   CONSTRAINT SqlQuestionDiffLevelFK FOREIGN KEY (DiffLevelNum)
     REFERENCES DiffLevel (LevelNum)
 );
@@ -66,24 +64,6 @@ CREATE TABLE SqlAnswer
 );
 
 
--- ---------------------------------------------------------------------------
--- Table SqlQuestionInTest
---
--- ---------------------------------------------------------------------------
-
-CREATE TABLE SqlQuestionInQuiz
-(
-  QuizId      INTEGER,
-  QuestionId  INTEGER,
-  Pos         INTEGER,
-  CONSTRAINT SqlQuestionInTest PRIMARY KEY (QuizId, QuestionId),
-  CONSTRAINT SqlQuestionInQuizSqlQuestionFK FOREIGN KEY (QuestionId)
-    REFERENCES SqlQuestion (Id),
-  CONSTRAINT SqlQuestionInQuizQuizFK FOREIGN KEY (QuizId)
-    REFERENCES Quiz (Id)
-);
-
-
 
 
 -- ***************************************************************************
@@ -105,29 +85,10 @@ CREATE TABLE SqlQuestionTrans
   LangCode CHAR(2),
   Id       INTEGER,
   QText    TEXT NOT NULL,
-  CId      INTEGER NOT NULL,
   Solution TEXT,
   CONSTRAINT SqlQuestionTransPK PRIMARY KEY (LangCode, Id),
   CONSTRAINT SqlQuestionTransLangFK FOREIGN KEY (LangCode) 
     REFERENCES Lang (Code),
   CONSTRAINT SqlQuestionTransQuestionFK FOREIGN KEY (Id) 
-    REFERENCES Question (Id),
-  CONSTRAINT SqlQuestionTransContextTransFK FOREIGN KEY (LangCode, CId) 
-    REFERENCES ContextTrans (LangCode, Id)
-);
-
-
--- ---------------------------------------------------------------------------
--- Table SqlAnswerTrans
--- ---------------------------------------------------------------------------
-CREATE TABLE SqlAnswerTrans
-(
-  LangCode CHAR(2),
-  AId      INTEGER,
-  AText    TEXT NOT NULL,
-  CONSTRAINT SqlAnswerTransPK PRIMARY KEY (LangCode, AId),
-  CONSTRAINT SqlAnswerTransLangFK FOREIGN KEY (LangCode) 
-    REFERENCES Lang (Code),
-  CONSTRAINT SqlAnswerTransSqlAnswerFK FOREIGN KEY (AId) 
-    REFERENCES SqlAnswer (Id)
+    REFERENCES Question (Id)
 );
