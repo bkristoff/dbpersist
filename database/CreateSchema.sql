@@ -589,6 +589,7 @@ CREATE TABLE QuizTrans
   LangCode CHAR(2),
   Id       INTEGER,
   Title    VARCHAR(100) NOT NULL,
+  QuizType VARCHAR(50),
   CONSTRAINT QuizTransPK PRIMARY KEY (LangCode, Id),
   CONSTRAINT QuizTransLangFK FOREIGN KEY (LangCode) 
     REFERENCES Lang (Code),
