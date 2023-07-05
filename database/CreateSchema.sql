@@ -461,7 +461,7 @@ CREATE TABLE Context
 CREATE TABLE Quiz
 (
   Id           SERIAL,
-  DiffLevelNum SMALLINT NOT NULL,
+  DiffLevelNum SMALLINT,
   ExerciseId   INTEGER, 
   CONSTRAINT QuizPK PRIMARY KEY (Id),
   CONSTRAINT QuizDiffLevelFK FOREIGN KEY (DiffLevelNum)
