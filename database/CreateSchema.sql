@@ -67,7 +67,6 @@ DROP TABLE IF EXISTS ExerciseTrans;
 DROP TABLE IF EXISTS CheckLog;
 DROP TABLE IF EXISTS Answer;
 DROP TABLE IF EXISTS Exercise;
-DROP TABLE IF EXISTS Notation;
 
 -- CORE tables
 DROP TABLE IF EXISTS AchievementTrans;
@@ -76,6 +75,7 @@ DROP TABLE IF EXISTS UserLevelTrans;
 DROP TABLE IF EXISTS UserGotAchievement;
 DROP TABLE IF EXISTS Login;
 DROP TABLE IF EXISTS AppUser;
+DROP TABLE IF EXISTS Notation;
 DROP TABLE IF EXISTS Achievement;
 DROP TABLE IF EXISTS Message;
 DROP TABLE IF EXISTS Avatar;
@@ -207,6 +207,17 @@ CREATE TABLE Achievement
 
 
 -- ---------------------------------------------------------------------------
+-- Table Notation
+--
+-- ---------------------------------------------------------------------------
+CREATE TABLE Notation
+(
+  Name VARCHAR(50),
+  CONSTRAINT NotationPK PRIMARY KEY (Name)
+);
+
+
+-- ---------------------------------------------------------------------------
 -- Table AppUser
 --
 -- ---------------------------------------------------------------------------
@@ -323,20 +334,9 @@ CREATE TABLE AchievementTrans
 
 
 
--- ---------------------------------------------------------------------------
+-- ***************************************************************************
 -- CREATE TABLES FOR ER MODULE
--- ---------------------------------------------------------------------------
-
--- ---------------------------------------------------------------------------
--- Table Notation
---
--- ---------------------------------------------------------------------------
-CREATE TABLE Notation
-(
-  Name VARCHAR(50),
-  CONSTRAINT NotationPK PRIMARY KEY (Name)
-);
-
+-- ***************************************************************************
 
 -- ---------------------------------------------------------------------------
 -- Table Exercise
@@ -433,9 +433,9 @@ CREATE TABLE ExerciseTrans
 
 
 
--- ---------------------------------------------------------------------------
+-- ***************************************************************************
 -- CREATE TABLES FOR QUIZ + SQL + CONCEPT MODULES
--- ---------------------------------------------------------------------------
+-- ***************************************************************************
 
 -- ---------------------------------------------------------------------------
 -- Table Context
@@ -528,7 +528,7 @@ CREATE TABLE QuizAnswer
   Id         SERIAL,
   QId        INTEGER,
   UserId     INTEGER,
-  AnsweredAt TIMESTAMP,
+  AnsweredAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   Points     INTEGER,
   Submitted  BOOLEAN NOT NULL,
   CONSTRAINT QuizAnswerPK PRIMARY KEY (Id),
@@ -642,12 +642,12 @@ CREATE TABLE AlternativeTrans
 
 
 
--- ---------------------------------------------------------------------------
+-- ***************************************************************************
 -- CREATE TABLES FOR SQL MODULE
 --
 -- OLD VERSION => DATA IS COPIED TO NEW QUIZ TABLES (ABOVE).
 -- SQL TABLES WILL BE REMOVED WHEN SQL MODULE IS REWRITTEN TO USE NEW TABLES.
--- ---------------------------------------------------------------------------
+-- ***************************************************************************
 
 -- ---------------------------------------------------------------------------
 -- Table SqlQuestion
@@ -655,7 +655,7 @@ CREATE TABLE AlternativeTrans
 -- ---------------------------------------------------------------------------
 CREATE TABLE SqlQuestion
 (
-  Id           INTEGER AUTO_INCREMENT,
+  Id           SERIAL,
   IsPublic     BOOLEAN  NOT NULL,
   ExerciseId   INTEGER,
   DiffLevelNum SMALLINT NOT NULL,
@@ -674,9 +674,9 @@ CREATE TABLE SqlQuestion
 -- ---------------------------------------------------------------------------
 CREATE TABLE SqlAnswer
 (
-  Id        INTEGER  AUTO_INCREMENT,
+  Id        SERIAL,
   Answer    TEXT,
-  StoredAt  DATETIME DEFAULT CURRENT_TIMESTAMP,
+  StoredAt  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   Points    INTEGER,
   UserId    INTEGER,
   QId       INTEGER,
