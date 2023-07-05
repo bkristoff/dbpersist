@@ -126,7 +126,7 @@ CREATE TABLE DiffLevel
 (
   LevelNum SMALLINT,
   -- Name   VARCHAR(50) NOT NULL,
-  -- Points INTEGER NOT NULL,
+  Points INTEGER NOT NULL,
   CONSTRAINT DiffLevelPK PRIMARY KEY (LevelNum)
 );
 
@@ -144,7 +144,7 @@ CREATE TABLE UserLevel
 (
   LevelNum    SMALLINT,
   -- Description    VARCHAR(255),
-  -- PointsRequired INTEGER,
+  PointsRequired INTEGER,
   CONSTRAINT UserLevelPK PRIMARY KEY (LevelNum)
 );
 
