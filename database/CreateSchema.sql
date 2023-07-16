@@ -459,7 +459,8 @@ CREATE TABLE Quiz
 (
   Id           SERIAL,
   DiffLevelNum SMALLINT,
-  ExerciseId   INTEGER, 
+  ExerciseId   INTEGER,
+  QuizType VARCHAR(50),
   CONSTRAINT QuizPK PRIMARY KEY (Id),
   CONSTRAINT QuizDiffLevelFK FOREIGN KEY (DiffLevelNum)
     REFERENCES DiffLevel (LevelNum),
@@ -586,7 +587,6 @@ CREATE TABLE QuizTrans
   LangCode CHAR(2),
   Id       INTEGER,
   Title    VARCHAR(100) NOT NULL,
-  QuizType VARCHAR(50),
   CONSTRAINT QuizTransPK PRIMARY KEY (LangCode, Id),
   CONSTRAINT QuizTransLangFK FOREIGN KEY (LangCode) 
     REFERENCES Lang (Code),
