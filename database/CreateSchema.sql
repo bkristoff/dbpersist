@@ -1,17 +1,14 @@
 -- ---------------------------------------------------------------------------
 -- SQL script for DbPersist.
 -- 
--- Version: 2.0
--- Date:    04.07.2023
+-- Date:    01.09.2023
 -- Author:  Bjørn Kristoffersen
---
--- GitHub:  https://github.com/bkristoff/dbpersist/
 --
 -- This SQL script creates the database tables for DbPersist.
 -- It is divided into three parts:
 --   1. Core tables
 --   2. ER module tables
---   3. Quiz + SQL + Concept module tables
+--   3. Multiple choice + SQL + Concept module tables
 
 -- Translation tables:
 -- The database has an extra translation table for some tables that contains
@@ -28,9 +25,7 @@
 
 -- DROP DATABASE IF EXISTS dbpersist;
 -- 
--- CREATE DATABASE IF NOT EXISTS dbpersist
---   DEFAULT CHARACTER SET = 'utf8mb4';
--- USE dbpersist;
+-- CREATE DATABASE IF NOT EXISTS dbpersist;
 
 
 
@@ -41,12 +36,7 @@
 -- Useful when running the script repeatedly (after changes).
 -- ***************************************************************************
 
--- Old SQL module (TO BE REMOVED)
-DROP TABLE IF EXISTS SqlQuestionTrans;
-DROP TABLE IF EXISTS SqlAnswer;
-DROP TABLE IF EXISTS SqlQuestion;
-
--- QUIZ + SQL + CONCEPT module
+-- MULTIPLE CHOICE + SQL + CONCEPT module
 DROP TABLE IF EXISTS AlternativeTrans;
 DROP TABLE IF EXISTS QuestionTrans;
 DROP TABLE IF EXISTS QuizTrans;
@@ -117,12 +107,10 @@ CREATE TABLE UserType
 --
 -- The difficulty levels in the app; go from 1 to 10.
 --
--- TODO Remove columns Name + Points?
 -- ---------------------------------------------------------------------------
 CREATE TABLE DiffLevel
 (
   LevelNum SMALLINT,
-  -- Name   VARCHAR(50) NOT NULL,
   Points INTEGER NOT NULL,
   CONSTRAINT DiffLevelPK PRIMARY KEY (LevelNum)
 );
@@ -132,15 +120,11 @@ CREATE TABLE DiffLevel
 -- Table UserLevel
 --
 -- The user levels in the app; go from 1 to 5.
--- Descriptions can be Newbie, Beginner, Experienced, Expert, Guru.
--- UserLevel=n can solve exercises at DiffLevel=n*2 without too much help.
---
--- TODO Remove columns Description + PointsRequired?
+-- 
 -- ---------------------------------------------------------------------------
 CREATE TABLE UserLevel
 (
   LevelNum    SMALLINT,
-  -- Description    VARCHAR(255),
   PointsRequired INTEGER,
   CONSTRAINT UserLevelPK PRIMARY KEY (LevelNum)
 );
@@ -476,7 +460,7 @@ CREATE TABLE Quiz
 CREATE TABLE Question
 (
   Id SERIAL,
-  DiffLevelNum SMALLINT NOT NULL,
+  DiffLevelNum SMALLINT,
   CONSTRAINT QuestionPK PRIMARY KEY (Id),
   CONSTRAINT QuestionDiffLevelFK FOREIGN KEY (DiffLevelNum)
     REFERENCES DiffLevel (LevelNum)
@@ -504,7 +488,7 @@ CREATE TABLE QuestionInQuiz
 -- Table Alternative
 --
 -- Used to represent alternatives for multiple choice questions.
--- For concept questions, the table is not used.
+-- 
 -- ---------------------------------------------------------------------------
 CREATE TABLE Alternative
 (
@@ -539,26 +523,26 @@ CREATE TABLE QuizAnswer
 
 -- ---------------------------------------------------------------------------
 -- Table QuestionAnswer
---
--- For multiple choice questions, the user's answer is stored in column AId.
--- For SQL questions, the user's answer is stored in column Answer.
--- For concept questions, the table is not used.
+
 -- ---------------------------------------------------------------------------
 CREATE TABLE QuestionAnswer
 (
   Id           SERIAL,
   QuizAnswerId INTEGER,
-  QuizId       INTEGER,
   QuestionId   INTEGER,
-  AId          CHAR(1),
   Answer       TEXT,
+  Submitted    BOOLEAN NOT NULL,
+  Points       SMALLINT,
+  HintPenalty  SMALLINT,
+  CheckPenalty SMALLINT,
+  LangCode     CHAR(2),
   CONSTRAINT QuestionAnswerPK PRIMARY KEY (Id),
   CONSTRAINT QuestionAnswerQuizAnswerFK FOREIGN KEY (QuizAnswerId) 
     REFERENCES QuizAnswer (Id),
-  CONSTRAINT QuestionAnswerQuestionInQuizFK FOREIGN KEY (QuizId, QuestionId) 
-    REFERENCES QuestionInQuiz (QuizId, QuestionId),
-  CONSTRAINT QuizAnswerAlternativeFK FOREIGN KEY (QuestionId, AId) 
-    REFERENCES Alternative (QId, AId)
+  CONSTRAINT QuestionAnswerQuestionFK FOREIGN KEY (QuestionId) 
+    REFERENCES Question (Id),
+  CONSTRAINT QuestionAnswerLangFK FOREIGN KEY (LangCode) 
+    REFERENCES Lang (Code)
 );
 
 
@@ -597,17 +581,15 @@ CREATE TABLE QuizTrans
 
 -- ---------------------------------------------------------------------------
 -- Table QuestionTrans
---
--- For multiple choice questions, QSolution is NULL.
--- For SQL/concept questions, QSolution holds the correct answer/definition.
+
 -- ---------------------------------------------------------------------------
 CREATE TABLE QuestionTrans
 (
   LangCode  CHAR(2),
   Id        INTEGER,
   QText     TEXT     NOT NULL,
-  QSolution TEXT     NOT NULL,
-  CId       INTEGER  NOT NULL,
+  QSolution TEXT,
+  CId       INTEGER,
   CONSTRAINT QuestionTransPK PRIMARY KEY (LangCode, Id),
   CONSTRAINT QuestionTransLangFK FOREIGN KEY (LangCode) 
     REFERENCES Lang (Code),
@@ -622,7 +604,7 @@ CREATE TABLE QuestionTrans
 -- Table AlternativeTrans
 --
 -- Used to represent alternatives for multiple choice questions.
--- For SQL/concept questions, the table is not used.
+-- 
 -- ---------------------------------------------------------------------------
 CREATE TABLE AlternativeTrans
 (
